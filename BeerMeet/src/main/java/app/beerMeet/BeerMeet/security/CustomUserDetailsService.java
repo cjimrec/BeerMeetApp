@@ -27,4 +27,5 @@ public class CustomUserDetailsService implements UserDetailsService {
             .roles(user.getIsAdmin() ? "ADMIN" : "USER")
             .build();
     }
+
 }

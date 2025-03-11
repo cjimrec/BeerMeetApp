@@ -17,7 +17,7 @@ import app.beerMeet.BeerMeet.security.CustomUserDetailsService;
 import app.beerMeet.BeerMeet.security.JwtUtil;
 import app.beerMeet.BeerMeet.service.UserService;
 
-@CrossOrigin(origins = "http://localhost:3001") // Habilitar CORS si es necesario
+@CrossOrigin(origins = "http://localhost:3001") // Habilitar CORS para el frontend
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -28,7 +28,8 @@ public class AuthController {
     private final UserService userService;
 
     @Autowired
-    public AuthController(AuthenticationManager authenticationManager, CustomUserDetailsService customUserDetailsService, JwtUtil jwtUtil, UserService userService) {
+    public AuthController(AuthenticationManager authenticationManager,
+                          CustomUserDetailsService customUserDetailsService, JwtUtil jwtUtil, UserService userService) {
         this.authenticationManager = authenticationManager;
         this.customUserDetailsService = customUserDetailsService;
         this.jwtUtil = jwtUtil;
@@ -38,36 +39,56 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
-            // Intentar autenticar con las credenciales proporcionadas
+            // Autenticar al usuario con las credenciales proporcionadas
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
             // Cargar detalles del usuario
             UserDetails userDetails = customUserDetailsService.loadUserByUsername(loginRequest.getEmail());
 
             // Generar token JWT
-            String token = jwtUtil.generateToken(userDetails.getUsername());
+            String token = jwtUtil.generateToken(userDetails);
 
             // Retornar el token y el email del usuario
             return ResponseEntity.ok(Map.of("token", token, "email", userDetails.getUsername()));
 
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Credenciales incorrectas"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciales incorrectas"));
         } catch (Exception e) {
             // Manejo general de excepciones
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Ocurrió un error en el proceso de autenticación"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Ocurrió un error en el proceso de autenticación"));
         }
     }
-@PostMapping("/register")
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Token inválido"));
+        }
+
+        // Invalidar el token (esto es un ejemplo, en producción deberías usar una lista negra de tokens)
+        String jwtToken = token.substring(7);
+        System.out.println("🔴 Logout exitoso, token eliminado: " + jwtToken);
+
+        return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
+    }
+
+    @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
         try {
-            // Intentar registrar al usuario
+            // Registrar al usuario
             User user = userService.registerUser(registerRequest);
+
+            // Retornar mensaje de éxito
             return ResponseEntity.ok(Map.of("message", "Usuario registrado correctamente", "email", user.getEmail()));
+        } catch (IllegalArgumentException e) {
+            // Manejo de error si el usuario ya existe o los datos son inválidos
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            // Manejo de error si no se puede registrar al usuario
-            return ResponseEntity.status(400).body(Map.of("error", "No se pudo registrar el usuario"));
+            // Manejo de error general
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "No se pudo registrar el usuario"));
         }
     }
 }

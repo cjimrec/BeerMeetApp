@@ -1,5 +1,6 @@
 package app.beerMeet.BeerMeet.service;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,38 +22,40 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-   @PostConstruct
-public void createDefaultAdmin() {
-    if (userRepository.findByEmail("admin@beermeet.com").isEmpty()) {
-        User admin = new User();
-        admin.setNombre("Administrador");
-        admin.setEmail("admin@beermeet.com");
-        admin.setPassword(passwordEncoder.encode("admin123")); // 🔥 Encripta la contraseña
-        admin.setIsAdmin(true); // 🚀 Se asegura de que sea admin
+    @PostConstruct
+    public void createDefaultAdmin() {
+        if (userRepository.findByEmail("admin@beermeet.com").isEmpty()) {
+            User admin = new User();
+            admin.setNombre("Administrador");
+            admin.setApellidos("Admin");  // 🔥 Nuevo campo: apellidos
+            admin.setEmail("admin@beermeet.com");
+            admin.setFechaNacimiento(LocalDate.of(1990, 1, 1));  // 🔥 Nuevo campo: fechaNacimiento
+            admin.setPassword(passwordEncoder.encode("admin123")); // 🔥 Encripta la contraseña
+            admin.setIsAdmin(true); // 🚀 Se asegura de que sea admin
 
             userRepository.save(admin);
-            System.out.println("✅ Administrador creado: admin@headsleague.com / Contraseña: admin123");
+            System.out.println("✅ Administrador creado: admin@beermeet.com / Contraseña: admin123");
         }
     }
 
-
-public User registerUser(RegisterRequest request) {
-    Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
-    if (existingUser.isPresent()) {
-        throw new RuntimeException("❌ El email ya está registrado.");}
+    public User registerUser(RegisterRequest request) {
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser.isPresent()) {
+            throw new RuntimeException("❌ El email ya está registrado.");
+        }
 
         User user = new User();
         user.setNombre(request.getNombre());
+        user.setApellidos(request.getApellidos());  // 🔥 Nuevo campo: apellidos
         user.setEmail(request.getEmail());
+        user.setFechaNacimiento(request.getFechaNacimiento());  // 🔥 Nuevo campo: fechaNacimiento
         user.setPassword(passwordEncoder.encode(request.getPassword())); // 🔥 Encripta la contraseña
-        user.setIsAdmin(false); // ❌ Aseguramos que los usuarios normales no son admin
+        user.setIsAdmin(false); 
 
         return userRepository.save(user);
     }
-
-    /**
-
-📌 Busca un usuario por email.*/
-  public Optional<User> findByEmail(String email) {
-      return userRepository.findByEmail(email);}
+    
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
 }
